@@ -1,0 +1,12 @@
+name: BayhawkTracker
+title: BayhawkTracker
+username: gfs8966
+account: gfs8966
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15124026
+bundleId: 10676753
+url: https://gfs8966.shinyapps.io/BayhawkTracker/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
