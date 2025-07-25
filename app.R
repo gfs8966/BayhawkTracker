@@ -5,12 +5,12 @@ library(dplyr)
 library(lubridate)
 library(plotly)
 library(tidyr)
+library(scales)
+
+color_gradient <- colorRampPalette(c("steelblue", "purple"))(14)
 
 # Replace this with your own sheet URL
 sheet_url <- "https://docs.google.com/spreadsheets/d/1NNxDkWscfBXmVXzWXZc3NetHMkP1GZteXrSodDInsBE/edit?resourcekey=&gid=1187787320#gid=1187787320"
-
-# You can read without authentication if sheet is public
-gs4_deauth()
 
 # Define UI
 ui <- fluidPage(
@@ -21,9 +21,9 @@ ui <- fluidPage(
   
   titlePanel("U11 Bayhawks Coaches Challenge Tracker"),
   tabsetPanel(
-    tabPanel("Team Progress", plotOutput("teamtally")),
+    tabPanel("Team Progress", plotOutput("passtally"), plotOutput("pushuptally")),
     tabPanel("Passes Leaderboard", plotOutput("barplot")),
-    tabPanel("Pushups Leaderboard", plotOutput("pushups"))
+    tabPanel("Push Ups Leaderboard", plotOutput("pushups"))
   )
 )
 
@@ -43,33 +43,40 @@ server <- function(input, output, session) {
   # Barplot output
   output$barplot <- renderPlot({
     # Adjust this depending on your data structure
-    ggplot(sheet_data, aes(x = factor(Player), y = Passes)) +
+    ggplot(sheet_data, aes(x = factor(Player), y = Passes, fill = as.factor(date_only))) +
       geom_bar(stat = "identity", fill = "steelblue") +
+      scale_fill_manual(values = color_gradient, name = "Date") +
       theme_minimal() +
       labs(x = "Category", y = "Value") +
-      geom_hline(yintercept = 1200)
+      geom_hline(yintercept = 1200, lty = 2)
   })
   
   output$pushups <- renderPlot({
     # Adjust this depending on your data structure
-    ggplot(sheet_data, aes(x = factor(Player), y = PushUps)) +
-      geom_bar(stat = "identity", fill = "purple") +
+    ggplot(sheet_data, aes(x = factor(Player), y = PushUps, fill = as.factor(date_only))) +
+      geom_bar(stat = "identity") +
+      scale_fill_manual(values = color_gradient, name = "Date") +
       theme_minimal() +
       labs(x = "Category", y = "Value") +
-      geom_hline(yintercept = 500)
+      geom_hline(yintercept = 500, lty = 2)
   })
   
   team_totals <- sheet_data %>% group_by(date_only) %>% 
-    summarize(PushUps = sum(PushUps), Passes = sum(Passes)) %>% 
+    summarize(PushUps = sum(PushUps, na.rm = T), Passes = sum(Passes, na.rm = T)) %>% 
     pivot_longer(names_to = "Exercise", values_to = "Reps", -date_only) %>%
     mutate(Reps = cumsum(Reps))
   
-  output$teamtally <- renderPlot({
-    ggplot(team_totals, aes(date_only, Reps, color = Exercise)) +
-      geom_line()+ geom_point() + xlab(element_blank()) +
-      theme_minimal() +
-      scale_color_manual(values = c("PushUps" = "steelblue", "Passes" = "purple"))
+  output$pushuptally <- renderPlot({
+    ggplot(filter(team_totals, Exercise == "PushUps"), aes(date_only, Reps)) +
+      geom_bar(stat = "identity", fill = "steelblue") + xlab(element_blank()) +
+      theme_minimal() + ggtitle("Push Ups") 
     })
+  
+  output$passtally <- renderPlot({
+    ggplot(filter(team_totals, Exercise == "Passes"), aes(date_only, Reps)) +
+      geom_bar(stat = "identity", fill = "purple") + xlab(element_blank()) +
+      theme_minimal() + ggtitle("Passes") 
+  })
 }
 
 # Run the App
