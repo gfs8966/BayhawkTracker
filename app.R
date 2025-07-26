@@ -3,7 +3,6 @@ library(googlesheets4)
 library(ggplot2)
 library(dplyr)
 library(lubridate)
-library(plotly)
 library(tidyr)
 library(scales)
 
@@ -11,7 +10,12 @@ color_gradient <- colorRampPalette(c("steelblue", "purple"))(14)
 training_range <- data.frame(date_only = seq(from = as.Date("2025-07-25"), to = as.Date("2025-08-07"), by = "day"))
 
 # Replace this with your own sheet URL
-sheet_url <- "https://docs.google.com/spreadsheets/d/1NNxDkWscfBXmVXzWXZc3NetHMkP1GZteXrSodDInsBE/edit?resourcekey=&gid=1187787320#gid=1187787320"
+sheet_url <- "https://docs.google.com/spreadsheets/d/1NNxDkWscfBXmVXzWXZc3NetHMkP1GZteXrSodDInsBE/edit?usp=sharing"
+gs4_deauth()
+team_pushup_target <- 16*500
+team_pass_target <- 16*1200
+daily_pushups <- ceiling(500/14)
+daily_pass <- ceiling(1200/14)
 
 # Define UI
 ui <- fluidPage(
@@ -28,16 +32,15 @@ ui <- fluidPage(
   )
 )
 
-team_pushup_target <- 16*500
-team_pass_target <- 16*1200
-daily_pushups <- ceiling(500/14)
-daily_pass <- ceiling(1200/14)
-
 # Define Server
 server <- function(input, output, session) {
   
   # Read sheet once at app start (or use reactivePoll for refresh)
   sheet_data <- read_sheet(sheet_url)
+  # sheet_data <- read.csv("rawdata.csv")
+  # names(sheet_data) <- c("Timestamp", "Column 1", "How many passes today?", "How many pushups today?")
+  # sheet_data$Timestamp <- substr(sheet_data$Timestamp, 1, 18)
+  
   sheet_data <- sheet_data %>% 
     mutate(date_only = as_date(ymd_hms(Timestamp))) %>% 
     rename(Player = `Column 1`, Passes = `How many passes today?`, PushUps = `How many pushups today?`) %>% 
@@ -48,7 +51,7 @@ server <- function(input, output, session) {
   output$barplot <- renderPlot({
     # Adjust this depending on your data structure
     ggplot(sheet_data, aes(x = factor(Player), y = Passes, fill = as.factor(date_only))) +
-      geom_bar(stat = "identity", fill = "steelblue") +
+      geom_bar(stat = "identity") +
       scale_fill_manual(values = color_gradient, name = "Date") +
       theme_minimal() +
       labs(x = "Category", y = "Value") +
