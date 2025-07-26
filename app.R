@@ -12,6 +12,7 @@ training_range <- data.frame(date_only = seq(from = as.Date("2025-07-25"), to = 
 # Replace this with your own sheet URL
 sheet_url <- "https://docs.google.com/spreadsheets/d/1NNxDkWscfBXmVXzWXZc3NetHMkP1GZteXrSodDInsBE/edit?usp=sharing"
 gs4_deauth()
+
 team_pushup_target <- 16*500
 team_pass_target <- 16*1200
 daily_pushups <- ceiling(500/14)
