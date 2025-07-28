@@ -5,6 +5,7 @@ library(dplyr)
 library(lubridate)
 library(tidyr)
 library(scales)
+library(plotly)
 
 color_gradient <- colorRampPalette(c("steelblue", "purple"))(14)
 training_range <- data.frame(date_only = seq(from = as.Date("2025-07-25"), to = as.Date("2025-08-07"), by = "day"))
@@ -27,9 +28,9 @@ ui <- fluidPage(
   
   titlePanel("U11 Bayhawks Coaches Challenge Tracker"),
   tabsetPanel(
-    tabPanel("Team Progress", plotOutput("passtally"), plotOutput("pushuptally")),
-    tabPanel("Passes Leaderboard", plotOutput("barplot")),
-    tabPanel("Push Ups Leaderboard", plotOutput("pushups"))
+    tabPanel("Team Progress", plotlyOutput("passtally"), plotlyOutput("pushuptally")),
+    tabPanel("Passes Leaderboard", plotlyOutput("passes")),
+    tabPanel("Push Ups Leaderboard", plotlyOutput("pushups"))
   )
 )
 
@@ -38,10 +39,7 @@ server <- function(input, output, session) {
   
   # Read sheet once at app start (or use reactivePoll for refresh)
   sheet_data <- read_sheet(sheet_url)
-  # sheet_data <- read.csv("rawdata.csv")
-  # names(sheet_data) <- c("Timestamp", "Column 1", "How many passes today?", "How many pushups today?")
-  # sheet_data$Timestamp <- substr(sheet_data$Timestamp, 1, 18)
-  
+
   sheet_data <- sheet_data %>% 
     mutate(date_only = as_date(ymd_hms(Timestamp))) %>% 
     rename(Player = `Column 1`, Passes = `How many passes today?`, PushUps = `How many pushups today?`) %>% 
@@ -49,24 +47,36 @@ server <- function(input, output, session) {
     mutate(Passes = suppressWarnings(as.numeric(unlist(Passes)))) %>% 
     mutate(PushUps = replace_na(PushUps, 0), Passes = replace_na(Passes, 0))
   # Barplot output
-  output$barplot <- renderPlot({
+  output$passes <- renderPlotly({
     # Adjust this depending on your data structure
-    ggplot(sheet_data, aes(x = factor(Player), y = Passes, fill = as.factor(date_only))) +
+    p <- ggplot(sheet_data, aes(x = factor(Player), 
+                                y = Passes, 
+                                fill = as.factor(date_only),
+                                text = paste0("Player: ", Player,
+                                              "<br>Date: ", date_only,
+                                              "<br>Passes: ", Passes))) +
       geom_bar(stat = "identity") +
       scale_fill_manual(values = color_gradient, name = "Date") +
       theme_minimal() +
       labs(x = "Category", y = "Value") +
       geom_hline(yintercept = 1200, lty = 2)
+    ggplotly(p, tooltip = "text")
   })
   
-  output$pushups <- renderPlot({
+  output$pushups <- renderPlotly({
     # Adjust this depending on your data structure
-    ggplot(sheet_data, aes(x = factor(Player), y = PushUps, fill = as.factor(date_only))) +
+    p2 <- ggplot(sheet_data, aes(x = factor(Player), 
+                           y = PushUps, 
+                           fill = as.factor(date_only),
+                           text = paste0("Player: ", Player,
+                                         "<br>Date: ", date_only,
+                                         "<br>Push-Ups: ", PushUps))) +
       geom_bar(stat = "identity") +
       scale_fill_manual(values = color_gradient, name = "Date") +
       theme_minimal() +
       labs(x = "Category", y = "Value") +
       geom_hline(yintercept = 500, lty = 2)
+    ggplotly(p2, tooltip = "text")
   })
   
   team_totals <- sheet_data %>%  
@@ -76,20 +86,22 @@ server <- function(input, output, session) {
     left_join(training_range, ., by="date_only") %>% 
     mutate(Passes = replace_na(Passes, 0), PushUps = replace_na(PushUps, 0)) 
 
-  output$pushuptally <- renderPlot({
-    ggplot(team_totals, aes(date_only, PushUps)) +
+  output$pushuptally <- renderPlotly({
+    p3 <- ggplot(team_totals, aes(date_only, PushUps, text = paste0("Tally: ", PushUps))) +
       geom_bar(stat = "identity", fill = "steelblue") + xlab(element_blank()) +
       theme_minimal() + ggtitle("Push Ups") +
       ylim(c(0, ifelse(team_pushup_target>max(team_totals$PushUps), team_pushup_target, max(team_totals$PushUps)+100))) +
       geom_hline(yintercept = team_pushup_target, lty =2, color = 'grey')
+    ggplotly(p3, tooltip = "text")
     })
   
-  output$passtally <- renderPlot({
-    ggplot(team_totals, aes(date_only, Passes)) +
+  output$passtally <- renderPlotly({
+    p4 <- ggplot(team_totals, aes(date_only, Passes, text = paste0("Tally: ", Passes))) +
       geom_bar(stat = "identity", fill = "steelblue") + xlab(element_blank()) +
       theme_minimal() + ggtitle("Passes") +
       ylim(c(0, ifelse(team_pass_target>max(team_totals$Passes), team_pass_target, max(team_totals$Passes)+100))) +
       geom_hline(yintercept = team_pass_target, lty =2, color = 'grey') 
+    ggplotly(p4, tooltip = "text")
   })
 }
 
